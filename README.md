@@ -75,6 +75,11 @@ Removes all lscache items from localStorage without affecting other data.
 
 * * *
 
+### lscache.flushExpired
+Removes all lscache expired items from localStorage without affecting other data.
+
+* * *
+
 ### lscache.setBucket
 Appends CACHE_PREFIX so lscache will partition data in to different buckets
 #### Arguments
