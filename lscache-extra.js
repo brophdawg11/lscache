@@ -137,6 +137,22 @@
   return Math.floor((new Date().getTime())/EXPIRY_UNITS);
   }
 
+  function flushExpiredItem(key) {
+    var exprKey = expirationKey(key);
+    var expr = getItem(exprKey);
+
+    if (expr) {
+      var expirationTime = parseInt(expr, EXPIRY_RADIX);
+
+      // Check if we should actually kick item out of storage
+      if (currentTime() >= expirationTime) {
+        removeItem(key);
+        removeItem(exprKey);
+        return true;
+      }
+    }
+  }
+
   /**
    * Wrapper functions for localStorage methods
    */
@@ -368,6 +384,19 @@
     if (key.indexOf(CACHE_PREFIX + cacheBucket) === 0) {
       localStorage.removeItem(key);
     }
+    }
+  },
+
+  /**
+  * Flushes expired lscache items and expiry markers without affecting rest of localStorage
+  */
+  flushExpired: function() {
+    if (!supportsStorage()) return;
+
+    // Loop in reverse as removing items will change indices of tail
+    for (var i = localStorage.length-1; i >= 0 ; --i) {
+      var key = localStorage.key(i);
+      flushExpiredItem(key);
     }
   },
 
