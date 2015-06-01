@@ -108,16 +108,15 @@
   } catch (exc) {
     cachedStorage = false;
   }
-  return cachedStorage;
+    return cachedStorage;
   }
 
-  // Determines if native JSON (de-)serialization is supported in the browser.
-  function supportsJSON() {
-  /*jshint eqnull:true */
-  if (cachedJSON === undefined) {
-    cachedJSON = (window.JSON != null);
-  }
-  return cachedJSON;
+  /**
+   * Returns the number of minutes since the epoch.
+   * @return {number}
+   */
+  function currentTime() {
+    return Math.floor((new Date().getTime())/EXPIRY_UNITS);
   }
 
   /**
@@ -126,40 +125,56 @@
    * @return {string}
    */
   function expirationKey(key) {
-  return key + CACHE_SUFFIX;
+    return key + CACHE_SUFFIX;
   }
 
-  /**
-   * Returns the number of minutes since the epoch.
-   * @return {number}
-   */
-  function currentTime() {
-  return Math.floor((new Date().getTime())/EXPIRY_UNITS);
+  function flushExpiredItem(key) {
+    var exprKey = expirationKey(key);
+    var expr = getItem(exprKey);
+
+    if (expr) {
+      var expirationTime = parseInt(expr, EXPIRY_RADIX);
+
+      // Check if we should actually kick item out of storage
+      if (currentTime() >= expirationTime) {
+        removeItem(key);
+        removeItem(exprKey);
+        return true;
+      }
+    }
   }
 
   /**
    * Wrapper functions for localStorage methods
    */
-
   function getItem(key) {
-  return localStorage.getItem(CACHE_PREFIX + cacheBucket + key);
-  }
-
-  function setItem(key, value) {
-  // Fix for iPad issue - sometimes throws QUOTA_EXCEEDED_ERR on setItem.
-  localStorage.removeItem(CACHE_PREFIX + cacheBucket + key);
-  localStorage.setItem(CACHE_PREFIX + cacheBucket + key, value);
+    return localStorage.getItem(CACHE_PREFIX + cacheBucket + key);
   }
 
   function removeItem(key) {
-  localStorage.removeItem(CACHE_PREFIX + cacheBucket + key);
+    localStorage.removeItem(CACHE_PREFIX + cacheBucket + key);
+  }
+
+  function setItem(key, value) {
+    // Fix for iPad issue - sometimes throws QUOTA_EXCEEDED_ERR on setItem.
+    localStorage.removeItem(CACHE_PREFIX + cacheBucket + key);
+    localStorage.setItem(CACHE_PREFIX + cacheBucket + key, value);
+  }
+
+  // Determines if native JSON (de-)serialization is supported in the browser.
+  function supportsJSON() {
+    /*jshint eqnull:true */
+    if (cachedJSON === undefined) {
+      cachedJSON = (window.JSON != null);
+    }
+    return cachedJSON;
   }
 
   function warn(message, err) {
-  if (!warnings) return;
-  if (!('console' in window) || typeof window.console.warn !== 'function') return;
-  window.console.warn("lscache - " + message);
-  if (err) window.console.warn("lscache - The error was: " + err.message);
+    if (!warnings) return;
+    if (!('console' in window) || typeof window.console.warn !== 'function') return;
+    window.console.warn("lscache - " + message);
+    if (err) window.console.warn("lscache - The error was: " + err.message);
   }
 
   var lscache = {
@@ -176,75 +191,76 @@
     // In future, localStorage may properly support storing non-strings
     // and this can be removed.
     if (typeof value !== 'string') {
-    if (!supportsJSON()) return;
-    try {
-      value = JSON.stringify(value);
-    } catch (e) {
-      // Sometimes we can't stringify due to circular refs
-      // in complex objects, so we won't bother storing then.
-      return;
-    }
-    }
-
-    try {
-    setItem(key, value);
-    } catch (e) {
-    if (e.name === 'QUOTA_EXCEEDED_ERR' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.name === 'QuotaExceededError') {
-      // If we exceeded the quota, then we will sort
-      // by the expire time, and then remove the N oldest
-      var storedKeys = [];
-      var storedKey;
-      for (var i = 0; i < localStorage.length; i++) {
-      storedKey = localStorage.key(i);
-
-      if (storedKey.indexOf(CACHE_PREFIX + cacheBucket) === 0 && storedKey.indexOf(CACHE_SUFFIX) < 0) {
-        var mainKey = storedKey.substr((CACHE_PREFIX + cacheBucket).length);
-        var exprKey = expirationKey(mainKey);
-        var expiration = getItem(exprKey);
-        if (expiration) {
-        expiration = parseInt(expiration, EXPIRY_RADIX);
-        } else {
-        // TODO: Store date added for non-expiring items for smarter removal
-        expiration = MAX_DATE;
-        }
-        storedKeys.push({
-        key: mainKey,
-        size: (getItem(mainKey)||'').length,
-        expiration: expiration
-        });
-      }
-      }
-      // Sorts the keys with oldest expiration time last
-      storedKeys.sort(function(a, b) { return (b.expiration-a.expiration); });
-
-      var targetSize = (value||'').length;
-      while (storedKeys.length && targetSize > 0) {
-      storedKey = storedKeys.pop();
-      warn("Cache is full, removing item with key '" + key + "'");
-      removeItem(storedKey.key);
-      removeItem(expirationKey(storedKey.key));
-      targetSize -= storedKey.size;
-      }
+      if (!supportsJSON()) return;
       try {
-      setItem(key, value);
+        value = JSON.stringify(value);
       } catch (e) {
-      // value may be larger than total quota
-      warn("Could not add item with key '" + key + "', perhaps it's too big?", e);
-      return;
+        // Sometimes we can't stringify due to circular refs
+        // in complex objects, so we won't bother storing then.
+        return;
       }
-    } else {
-      // If it was some other error, just give up.
-      warn("Could not add item with key '" + key + "'", e);
-      return;
     }
+
+    try {
+      setItem(key, value);
+    } catch (e) {
+      if (e.name === 'QUOTA_EXCEEDED_ERR' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.name === 'QuotaExceededError') {
+        // If we exceeded the quota, then we will sort
+        // by the expire time, and then remove the N oldest
+        var storedKeys = [];
+        var storedKey;
+        for (var i = 0; i < localStorage.length; i++) {
+          storedKey = localStorage.key(i);
+
+          if (storedKey.indexOf(CACHE_PREFIX + cacheBucket) === 0 && storedKey.indexOf(CACHE_SUFFIX) < 0) {
+            var mainKey = storedKey.substr((CACHE_PREFIX + cacheBucket).length);
+            var exprKey = expirationKey(mainKey);
+            var expiration = getItem(exprKey);
+            if (expiration) {
+              expiration = parseInt(expiration, EXPIRY_RADIX);
+            } else {
+              // TODO: Store date added for non-expiring items for smarter removal
+              expiration = MAX_DATE;
+            }
+            storedKeys.push({
+              key: mainKey,
+              size: (getItem(mainKey)||'').length,
+              expiration: expiration
+            });
+          }
+        }
+
+        // Sorts the keys with oldest expiration time last
+        storedKeys.sort(function(a, b) { return (b.expiration-a.expiration); });
+
+        var targetSize = (value||'').length;
+        while (storedKeys.length && targetSize > 0) {
+          storedKey = storedKeys.pop();
+          warn("Cache is full, removing item with key '" + key + "'");
+          removeItem(storedKey.key);
+          removeItem(expirationKey(storedKey.key));
+          targetSize -= storedKey.size;
+        }
+        try {
+          setItem(key, value);
+        } catch (e) {
+          // value may be larger than total quota
+          warn("Could not add item with key '" + key + "', perhaps it's too big?", e);
+          return;
+        }
+      } else {
+        // If it was some other error, just give up.
+        warn("Could not add item with key '" + key + "'", e);
+        return;
+      }
     }
 
     // If a time is specified, store expiration info in localStorage
     if (time) {
-    setItem(expirationKey(key), (currentTime() + time).toString(EXPIRY_RADIX));
+      setItem(expirationKey(key), (currentTime() + time).toString(EXPIRY_RADIX));
     } else {
     // In case they previously set a time, remove that info from localStorage.
-    removeItem(expirationKey(key));
+      removeItem(expirationKey(key));
     }
   },
 
@@ -260,12 +276,12 @@
     var expr = getItem(exprKey);
 
     if (expr) {
-    var expirationTime = parseInt(expr, EXPIRY_RADIX);
+      var expirationTime = parseInt(expr, EXPIRY_RADIX);
 
-    // Check if we should actually kick item out of storage
-    if (currentTime() >= expirationTime) {
-      return true;
-    }
+      // Check if we should actually kick item out of storage
+      if (currentTime() >= expirationTime) {
+        return true;
+      }
     }
 
     return false;
@@ -364,10 +380,23 @@
 
     // Loop in reverse as removing items will change indices of tail
     for (var i = localStorage.length-1; i >= 0 ; --i) {
-    var key = localStorage.key(i);
-    if (key.indexOf(CACHE_PREFIX + cacheBucket) === 0) {
-      localStorage.removeItem(key);
+      var key = localStorage.key(i);
+      if (key.indexOf(CACHE_PREFIX + cacheBucket) === 0) {
+        localStorage.removeItem(key);
+      }
     }
+  },
+
+  /**
+  * Flushes expired lscache items and expiry markers without affecting rest of localStorage
+  */
+  flushExpired: function() {
+    if (!supportsStorage()) return;
+
+    // Loop in reverse as removing items will change indices of tail
+    for (var i = localStorage.length-1; i >= 0 ; --i) {
+      var key = localStorage.key(i);
+      flushExpiredItem(key);
     }
   },
 
