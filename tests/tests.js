@@ -71,6 +71,23 @@ var startTests = function (lscache) {
       equal(localStorage.getItem('outside-cache'), 'not part of lscache', 'We expect localStorage value to still persist');
     });
 
+    asyncTest('Testing flushExpired()', function() {
+      var key = 'thekey';
+      var seconds = 1;
+      
+      localStorage.setItem('outside-cache', 'not part of lscache');
+
+      lscache.setExpiryUnitMs(1000);
+      lscache.set(key, 'bla', seconds);
+
+      setTimeout(function () {
+        lscache.flushExpired();
+        equal(lscache.get(key), null, 'We expect flushed value to be null');
+        equal(localStorage.getItem('outside-cache'), 'not part of lscache', 'We expect localStorage value to still persist');
+        start();
+      }, (seconds + 1) * 1000);
+    });
+
     test('Testing setBucket()', function() {
       var key = 'thekey';
       var value1 = 'awesome';
