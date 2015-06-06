@@ -44,6 +44,9 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
   // time resolution in minutes
   var EXPIRY_UNITS = 60 * 1000;
 
+  // Key to tore our expiry units in localStorage so we can be aware if it changes
+  var EXPIRY_UNITS_KEY = '_lscache-expiry-units-key';
+
   // ECMAScript max Date (epoch + 1e8 days)
   var MAX_DATE = Math.floor(8.64e15/EXPIRY_UNITS);
 
@@ -97,6 +100,15 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
     }
     return cachedJSON;
   }
+  
+  /**
+   * Returns a string where all RegExp special characters are escaped with a \.
+   * @param {String} text
+   * @return {string}
+   */
+  function escapeRegExpSpecialCharacters(text) {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  }
 
   /**
    * Returns the full string for the localStorage expiration item.
@@ -134,7 +146,7 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
   }
 
   function eachKey(fn) {
-    var prefixRegExp = new RegExp('^' + CACHE_PREFIX + cacheBucket + '(.*)');
+    var prefixRegExp = new RegExp('^' + CACHE_PREFIX + escapeRegExpSpecialCharacters(cacheBucket) + '(.*)');
     // Loop in reverse as removing items will change indices of tail
     for (var i = localStorage.length-1; i >= 0 ; --i) {
       var key = localStorage.key(i);
@@ -177,6 +189,29 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
   }
 
   var lscache = {
+
+    /**
+     * Sets the muber of milliseconds per 'unit' of cache time.  For example,
+     * this value is 60*1000 by default, to cache in units of minutes.
+     * To cache by seconds, this would be 1000.
+     *
+     * Note, this flushes the lscache as well if the units differ from what
+     * was previously used, to ensure that no prior data, using a different
+     * unit, remains in an invalid cache state.
+     *
+     * @param {number} ms  Milliseconds to use for a cache expiration unit
+     */
+    setExpiryUnitMs: function (ms) {
+      var existingUnits = lscache.get(EXPIRY_UNITS_KEY);
+      // Only clear if the new units dont match the old
+      if (existingUnits !== ms) {
+        lscache.flush();
+      }
+
+      lscache.set(EXPIRY_UNITS_KEY, ms);
+      EXPIRY_UNITS = ms;
+    },
+
     /**
      * Stores the value in localStorage. Expires after specified number of minutes.
      * @param {string} key
@@ -310,6 +345,8 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
       eachKey(function(key) {
         flushItem(key);
       });
+
+      flushItem(EXPIRY_UNITS_KEY);
     },
 
     /**
@@ -346,10 +383,15 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
     }
   };
 
+  // Set initial expiry units
+  lscache.setExpiryUnitMs(EXPIRY_UNITS);
+
   // Return the module
   return lscache;
 }));
 
+},{}],"qunit":[function(require,module,exports){
+module.exports=require('nCxwBE');
 },{}],"nCxwBE":[function(require,module,exports){
 (function (global){
 (function browserifyShim(module, exports, define, browserify_shim__define__module__export__) {
@@ -1970,8 +2012,6 @@ QUnit.diff = (function() {
 }).call(global, undefined, undefined, undefined, function defineExport(ex) { module.exports = ex; });
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],"qunit":[function(require,module,exports){
-module.exports=require('nCxwBE');
 },{}],4:[function(require,module,exports){
 /* jshint undef:true, browser:true, node:true */
 /* global QUnit, test, equal, asyncTest, start, define */
@@ -2191,6 +2231,42 @@ var startTests = function (lscache) {
       }, 1500);
     });
 
+    asyncTest('Testing setExpiryUnitMs', 2, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 2;
+
+      // Change cache unit duration to seconds, not minutes
+      lscache.setExpiryUnitMs(1000);
+      lscache.set(key, value, seconds);
+
+      setTimeout(function() {
+        window.strictEqual(lscache.get(key), value, 'We expect value to be correct');
+      }, 1000 * (seconds / 2));
+
+      setTimeout(function() {
+        equal(lscache.get(key), null, 'We expect value to be null');
+        start();
+      }, 1000 * (seconds + 1));
+    });
+
+    test('Testing setExpiryUnitMs flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 1;
+      lscache.set(key, value, seconds);
+      lscache.setExpiryUnitMs(1000);
+      equal(lscache.get(key), null, 'We expect value to be flushed');
+    });
+
+   test('Testing setExpiryUnitMs non-flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var units = 1;
+      lscache.set(key, value, units);
+      lscache.setExpiryUnitMs(60 * 1000);
+      equal(lscache.get(key), null, 'We expect value to not have been flushed');
+    });
   }
 
   if (QUnit.config.autostart === false) {
