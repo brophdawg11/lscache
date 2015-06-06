@@ -44,6 +44,9 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
   // time resolution in minutes
   var EXPIRY_UNITS = 60 * 1000;
 
+  // Key to tore our expiry units in localStorage so we can be aware if it changes
+  var EXPIRY_UNITS_KEY = '_lscache-expiry-units-key';
+
   // ECMAScript max Date (epoch + 1e8 days)
   var MAX_DATE = Math.floor(8.64e15/EXPIRY_UNITS);
 
@@ -191,6 +194,29 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
   }
 
   var lscache = {
+
+    /**
+     * Sets the muber of milliseconds per 'unit' of cache time.  For example,
+     * this value is 60*1000 by default, to cache in units of minutes.
+     * To cache by seconds, this would be 1000.
+     *
+     * Note, this flushes the lscache as well if the units differ from what
+     * was previously used, to ensure that no prior data, using a different
+     * unit, remains in an invalid cache state.
+     *
+     * @param {number} ms  Milliseconds to use for a cache expiration unit
+     */
+    setExpiryUnitMs: function (ms) {
+      var existingUnits = lscache.get(EXPIRY_UNITS_KEY);
+      // Only clear if the new units dont match the old
+      if (existingUnits !== ms) {
+        lscache.flush();
+      }
+
+      lscache.set(EXPIRY_UNITS_KEY, ms);
+      EXPIRY_UNITS = ms;
+    },
+
     /**
      * Stores the value in localStorage. Expires after specified number of minutes.
      * @param {string} key
@@ -338,6 +364,8 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
       eachKey(function(key) {
         flushItem(key);
       });
+
+      flushItem(EXPIRY_UNITS_KEY);
     },
 
     /**
@@ -373,6 +401,9 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
       warnings = enabled;
     }
   };
+
+  // Set initial expiry units
+  lscache.setExpiryUnitMs(EXPIRY_UNITS);
 
   // Return the module
   return lscache;
@@ -2253,6 +2284,43 @@ var startTests = function (lscache) {
 
         start();
       }, 1000*60*minutes + 1000);  // 1 second longer
+    });
+
+    asyncTest('Testing setExpiryUnitMs', 2, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 2;
+
+      // Change cache unit duration to seconds, not minutes
+      lscache.setExpiryUnitMs(1000);
+      lscache.set(key, value, seconds);
+
+      setTimeout(function() {
+        window.strictEqual(lscache.get(key), value, 'We expect value to be correct');
+      }, 1000 * (seconds / 2));
+
+      setTimeout(function() {
+        equal(lscache.get(key), null, 'We expect value to be null');
+        start();
+      }, 1000 * (seconds + 1));
+    });
+
+    test('Testing setExpiryUnitMs flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 1;
+      lscache.set(key, value, seconds);
+      lscache.setExpiryUnitMs(1000);
+      equal(lscache.get(key), null, 'We expect value to be flushed');
+    });
+
+   test('Testing setExpiryUnitMs non-flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var units = 1;
+      lscache.set(key, value, units);
+      lscache.setExpiryUnitMs(60 * 1000);
+      equal(lscache.get(key), null, 'We expect value to not have been flushed');
     });
   }
 

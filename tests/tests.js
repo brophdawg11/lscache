@@ -251,6 +251,43 @@ var startTests = function (lscache) {
         start();
       }, 1000*60*minutes + 1000);  // 1 second longer
     });
+
+    asyncTest('Testing setExpiryUnitMs', 2, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 2;
+
+      // Change cache unit duration to seconds, not minutes
+      lscache.setExpiryUnitMs(1000);
+      lscache.set(key, value, seconds);
+
+      setTimeout(function() {
+        window.strictEqual(lscache.get(key), value, 'We expect value to be correct');
+      }, 1000 * (seconds / 2));
+
+      setTimeout(function() {
+        equal(lscache.get(key), null, 'We expect value to be null');
+        start();
+      }, 1000 * (seconds + 1));
+    });
+
+    test('Testing setExpiryUnitMs flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 1;
+      lscache.set(key, value, seconds);
+      lscache.setExpiryUnitMs(1000);
+      equal(lscache.get(key), null, 'We expect value to be flushed');
+    });
+
+   test('Testing setExpiryUnitMs non-flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var units = 1;
+      lscache.set(key, value, units);
+      lscache.setExpiryUnitMs(60 * 1000);
+      equal(lscache.get(key), null, 'We expect value to not have been flushed');
+    });
   }
 
   if (QUnit.config.autostart === false) {
