@@ -20,16 +20,52 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
 /* global define */
 
 (function (root, factory) {
-    if (typeof define === 'function' && define.amd) {
-        // AMD. Register as an anonymous module.
-        define([], factory);
-    } else if (typeof module !== "undefined" && module.exports) {
-        // CommonJS/Node module
-        module.exports = factory();
-    } else {
-        // Browser globals
-        root.lscache = factory();
+
+  // Module export approach is taken from Lodash:
+  // https://github.com/lodash/lodash/blob/505aa7e73027adb7df00f6226c38bdf1489cbf16/lodash.src.js#L12431
+
+  /** Used to determine if values are of the language type `Object`. */
+  var objectTypes = {
+    'function': true,
+    'object': true
+  };
+
+  /** Detect free variable `exports`. */
+  var freeExports = objectTypes[typeof exports] && exports && !exports.nodeType && exports;
+
+  /** Detect free variable `module`. */
+  var freeModule = objectTypes[typeof module] && module && !module.nodeType && module;
+
+  /** Detect the popular CommonJS extension `module.exports`. */
+  var moduleExports = freeModule && freeModule.exports === freeExports && freeExports;
+
+  // Some AMD build optimizers like r.js check for condition patterns like the following:
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    // Expose lscacheExtra to the global object when an AMD loader is present to avoid
+    // errors in cases where lscacheExtra is loaded by a script tag and not intended
+    // as an AMD module. See http://requirejs.org/docs/errors.html#mismatch for
+    // more details.
+    root.lscache = factory();
+
+    // AMD. Register as an anonymous module.
+    define([], factory);
+  }
+  // Check for `exports` after `define` in case a build optimizer adds an `exports` object.
+  else if (freeExports && freeModule) {
+    // Export for Node.js or RingoJS.
+    if (moduleExports) {
+      freeModule.exports = factory();
     }
+    // Export for Narwhal or Rhino -require.
+    else {
+      freeExports.lscache = factory();
+    }
+  }
+  else {
+    // Export for a browser or Rhino.
+    root.lscache = factory();
+  }
+
 }(this, function () {
 
   // Prefix for all lscache keys
