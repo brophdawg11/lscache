@@ -7,8 +7,8 @@ module.exports = function(grunt) {
     },
     uglify: {
       dist: {
-        src: ["lscache-extra.js"],
-        dest: "lscache-extra.min.js"
+        src: ["lscache.js"],
+        dest: "lscache.min.js"
       }
     },
     bump: {

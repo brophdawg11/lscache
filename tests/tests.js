@@ -243,10 +243,14 @@ var startTests = function (lscache) {
 
     asyncTest('Testing flush(expired)', function() {
       localStorage.setItem('outside-cache', 'not part of lscache');
+
+      // Change cache unit duration to seconds, not minutes
+      lscache.setExpiryUnitMs(1000);
+
       var unexpiredKey = 'unexpiredKey';
       var expiredKey = 'expiredKey';
-      lscache.set(unexpiredKey, 'bla', 1);
-      lscache.set(expiredKey, 'blech', 1/60); // Expire after one second
+      lscache.set(unexpiredKey, 'bla', 3);
+      lscache.set(expiredKey, 'blech', 1); // Expire after one second
 
       setTimeout(function() {
         lscache.flushExpired();
@@ -337,14 +341,14 @@ var startTests = function (lscache) {
 
 if (typeof module !== "undefined" && module.exports) {
 
-  var lscacheExtra = require('../lscache-extra');
+  var lscache = require('../lscache');
   var qunit = require('qunit');
-  startTests(lscacheExtra);
+  startTests(lscache);
 } else if (typeof define === 'function' && define.amd) {
 
   QUnit.config.autostart = false;
-  require(['../lscache-extra'], startTests);
+  require(['../lscache'], startTests);
 } else {
   // Assuming that lscache has been properly included
-  startTests(lscacheExtra);
+  startTests(lscache);
 }
