@@ -245,7 +245,9 @@
       var existingUnits = lscache.get(EXPIRY_UNITS_KEY);
 
       if (typeof ms !== 'number') {
-        ms = existingUnits != null ? existingUnits : EXPIRY_UNITS;
+        ms = typeof existingUnits === 'number' ?
+               existingUnits :
+               EXPIRY_UNITS;
       }
 
       // Only clear if the new units dont match the old
