@@ -38,8 +38,19 @@ Retrieves specified value from localStorage, if not expired.
 1. `key` (**string**)
 2. `skipRemove` (**boolean**)  Don't remove the item if it is found to be expired [Default: false]
 3. `allowExpired` (**boolean**)  Allow returning of expired values  [Default: false]
+
 #### Returns
-**string | Object** : The stored value.
+**string | Object** : The stored value. If no value is available, null is returned.
+
+* * *
+
+### lscache.isExpired
+Returned whether or not the given key is expired
+#### Arguments
+1. `key` (**string**)
+
+#### Returns
+**boolean** : Whether or not the cached value is expired
 
 * * *
 
@@ -75,10 +86,27 @@ Removes all lscache items from localStorage without affecting other data.
 
 * * *
 
+### lscache.flushExpired
+Removes all expired lscache items from localStorage without affecting other data.
+
+* * *
+
 ### lscache.setBucket
 Appends CACHE_PREFIX so lscache will partition data in to different buckets
 #### Arguments
 1. `bucket` (**string**)
+
+* * *
+
+### lscache.setExpiryUnitMs
+Change the units used for cache expiration.  Default is minutes (60 * 1000).
+
+Note: this flushes the lscache as well if the units differ from what
+was previously used, to ensure that no prior data, using a different
+unit, remains in an invalid cache state
+
+#### Arguments
+1. `ms` (**number**)
 
 Usage
 -------
@@ -107,6 +135,12 @@ You can remove all items from the cache entirely with `lscache.flush()`:
 
 ```js
 lscache.flush();
+```
+
+You can remove only expired items from the cache entirely with `lscache.flushExpired()`:
+
+```js
+lscache.flushExpired();
 ```
 
 The library also takes care of serializing objects, so you can store more complex data:

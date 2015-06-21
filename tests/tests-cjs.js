@@ -24,7 +24,7 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
 (function (root, factory) {
   // Module export approach is taken from Lodash:
   // https://github.com/lodash/lodash/blob/505aa7e73027adb7df00f6226c38bdf1489cbf16/lodash.src.js#L12431
-  
+
   /** Used to determine if values are of the language type `Object`. */
   var objectTypes = {
     'function': true,
@@ -2268,43 +2268,92 @@ var startTests = function (lscache) {
       }, 1000 * (seconds + 1));
     });
 
+    asyncTest('Testing flush(expired)', function() {
+      localStorage.setItem('outside-cache', 'not part of lscache');
+      var unexpiredKey = 'unexpiredKey';
+      var expiredKey = 'expiredKey';
+      lscache.set(unexpiredKey, 'bla', 1);
+      lscache.set(expiredKey, 'blech', 1/60); // Expire after one second
+
+      setTimeout(function() {
+        lscache.flushExpired();
+        equal(lscache.get(unexpiredKey), 'bla', 'We expect unexpired value to survive flush');
+        equal(lscache.get(expiredKey), null, 'We expect expired value to be flushed');
+        equal(localStorage.getItem('outside-cache'), 'not part of lscache', 'We expect localStorage value to still persist');
+        start();
+      }, 1500);
+    });
+
     asyncTest("Test isExpired() function", function() {
-      // Change cache unit duration to seconds, not minutes
-      lscache.setExpiryUnitMs(1000);
+      var key = 'thekey';
+      var value = 'thevalue';
+      var minutes = 1;
+      var strictEqual = window.strictEqual;
 
-      var key = 'thekey', val = 'thevalue',
-          seconds = 1;
-
-      lscache.set(key, val, seconds);
+      lscache.set(key, value, minutes);
 
       setTimeout(function () {
-        window.strictEqual(lscache.isExpired(key), true, 'Ensure the key is considered expired');
+        strictEqual(lscache.isExpired(key), true, 'Ensure the key is considered expired');
         start();
-      }, (seconds + 1) * 1000);  // 1 second longer
+      }, 1000*60*minutes + 1000);  // 1 second longer
     });
 
     asyncTest("Test get() skipRemove/allowExpired parameters", function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var minutes = 1;
+      var strictEqual = window.strictEqual;
 
-      // Change cache unit duration to seconds, not minutes
-      lscache.setExpiryUnitMs(1000);
-
-      var key = 'thekey', val = 'thevalue',
-          seconds = 1,
-          strictEqual = window.strictEqual;
-
-      lscache.set(key, val, seconds);
+      lscache.set(key, value, minutes);
 
       setTimeout(function () {
         strictEqual(lscache.get(key, true), null, 'get() should return null for the expired key');
-        strictEqual(localStorage.getItem(CACHE_PREFIX + key), val, 'Ensure the value was not removed in the last get() call');
-        strictEqual(lscache.get(key, true, true), val, 'get() should return the value when allowExpired is true');
+        strictEqual(localStorage.getItem(CACHE_PREFIX + key), value, 'Ensure the value was not removed in the last get() call');
+        strictEqual(lscache.get(key, true, true), value, 'get() should return the value when allowExpired is true');
 
         // Now, call without skipRemove, we should get the value but it should also be removed
-        strictEqual(lscache.get(key, false, true), val, 'get() should return the value when allowExpired is true');
+        strictEqual(lscache.get(key, false, true), value, 'get() should return the value when allowExpired is true');
         strictEqual(localStorage.getItem(CACHE_PREFIX + key), null, 'Ensure the value was removed in the last get() call');
 
         start();
-      }, (seconds + 1) * 1000);  // 1 second longer
+      }, 1000*60*minutes + 1000);  // 1 second longer
+    });
+
+    asyncTest('Testing setExpiryUnitMs', 2, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 2;
+
+      // Change cache unit duration to seconds, not minutes
+      lscache.setExpiryUnitMs(1000);
+      lscache.set(key, value, seconds);
+
+      setTimeout(function() {
+        window.strictEqual(lscache.get(key), value, 'We expect value to be correct');
+      }, 1000 * (seconds / 2));
+
+      setTimeout(function() {
+        equal(lscache.get(key), null, 'We expect value to be null');
+        start();
+      }, 1000 * (seconds + 1));
+    });
+
+    test('Testing setExpiryUnitMs flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var seconds = 1;
+      lscache.set(key, value, seconds);
+      lscache.setExpiryUnitMs(1000);
+      equal(lscache.get(key), null, 'We expect value to be flushed');
+    });
+
+   test('Testing setExpiryUnitMs non-flushing', 1, function() {
+      var key = 'thekey';
+      var value = 'thevalue';
+      var units = 1;
+      lscache.set(key, value, units);
+      lscache.setExpiryUnitMs(60 * 1000);
+      equal(lscache.get(key), null, 'We expect value to not have been flushed');
     });
   }
 
