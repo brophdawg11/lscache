@@ -9,17 +9,10 @@ Additional Functionality
 ------------------------
 This library is a fork of @pamelafox's [lscache library](https://github.com/pamelafox/lscache), with a little extra functionality exposed.  Namely, the `skipRemove` and `allowExpired` parameters for `get()` and the `isExpired()` and `setExpiryUnitMs()` functions.
 
-Use with Angular
-----------------
-If you're using this library with Angular, it takes care of registering itself as a constant within an 'lscacheExtra' module, i.e.,
-
-`angular.module('lscacheExtra', []).constant('lscacheExtra', lscacheExtra);`
-
-
 Methods
 -------
 
-The library exposes 7 methods: `set()`, `get()`, `isExpired()`, `setExpiryUnitMs()`, `remove()`, `flush()`, and `setBucket()`.
+The library exposes 8 methods: `set()`, `get()`, `isExpired()`, `setExpiryUnitMs()`, `remove()`, `flush()`, `flushExpired()`, and `setBucket()`.
 
 * * *
 
@@ -49,15 +42,6 @@ Returned whether or not the given key is expired
 #### Arguments
 1. `key` (**string**)
 
-#### Returns
-**boolean** : Whether or not the cached value is expired
-
-* * *
-
-### lscache.isExpired
-Returned whether or not the given key is expired
-#### Arguments
-1. `key` (**string**)
 #### Returns
 **boolean** : Whether or not the cached value is expired
 
