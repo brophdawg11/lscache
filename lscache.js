@@ -243,6 +243,11 @@
      */
     setExpiryUnitMs: function (ms) {
       var existingUnits = lscache.get(EXPIRY_UNITS_KEY);
+
+      if (typeof ms !== 'number') {
+        ms = existingUnits != null ? existingUnits : EXPIRY_UNITS;
+      }
+
       // Only clear if the new units dont match the old
       if (existingUnits !== ms) {
         lscache.flush();
@@ -438,7 +443,7 @@
   };
 
   // Set initial expiry units
-  lscache.setExpiryUnitMs(EXPIRY_UNITS);
+  lscache.setExpiryUnitMs();
 
   // Return the module
   return lscache;
