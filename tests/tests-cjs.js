@@ -143,7 +143,7 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
    * @return {string}
    */
   function escapeRegExpSpecialCharacters(text) {
-    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    return text.replace(/[[\]{}()*+?.\\^$|]/g, '\\$&');
   }
 
   /**
